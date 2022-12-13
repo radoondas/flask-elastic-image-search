@@ -16,7 +16,7 @@ ES_USER = "elastic"
 ES_PASSWORD = "changeme"
 ES_TIMEOUT = 3600
 
-DEST_INDEX = "myy-image-embeddings"
+DEST_INDEX = "my-image-embeddings"
 DELETE_EXISTING = True
 CHUNK_SIZE = 100
 
