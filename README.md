@@ -69,6 +69,11 @@ Go back in to the main project directory and import the model using Eland docker
 # wait until each model is loaded and started. If you do not have enough memory, you will see errors sometimes confusing
 $ eland_import_hub_model --url https://elastic:changeme@127.0.0.1:9200 --hub-model-id sentence-transformers/clip-ViT-B-32-multilingual-v1 --task-type text_embedding --start --ca-certs app/conf/ca.crt
 ```
+For ESS cloud Elasticsearch deployment use bundled CA certificate.
+```bash
+$ eland_import_hub_model --url https://elastic:<password>@URL:443 --hub-model-id sentence-transformers/clip-ViT-B-32-multilingual-v1 --task-type text_embedding --start --ca-certs app/conf/ess-cloud.cer
+```
+
 Example output:
 ```bash
 eland_import_hub_model --url https://elastic:changeme@127.0.0.1:9200 --hub-model-id sentence-transformers/clip-ViT-B-32-multilingual-v1 --task-type text_embedding --start --ca-certs app/conf/ca.crt
@@ -108,6 +113,8 @@ $ python3 create-image-embeddings.py --es_host='https://127.0.0.1:9200' \
   --es_user='elastic' --es_password='changeme' \
   --ca_certs='../app/conf/ca.crt'
 ```
+
+For ESS cloud use the correct URL:PORT from the Cloud deployment and also different CA certificate. `--ca_certs='../app/conf/ess-cloud.cer`
 
 After the script finishes, you can check if the index `my-image-embeddings` exists and has documents. Use Kibana Dev Tools to check.
 ```
