@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" href="https://elastic.co/favicon-32x32.png" sizes="32x32"/>
+    <link rel="shortcut icon" href="https://elastic.co/favicon.ico" type="image/x-icon"/>
+    <link rel="icon" href="https://elastic.co/favicon.ico" type="image/x-icon"/>
+
+    <title>{{ title }} - Elastic Image search PoC implementation</title>
+</head>
+<body>
+
+
+<div class="container">
+    <nav class="navbar is-dark">
+        <div id="navbarTransparent" class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="{{ url_for('index') }}">Home</a>
+                <a class="navbar-item" href="{{ url_for('image_search') }}">Image Search</a>
+                <a class="navbar-item" href="{{ url_for('similar_image') }}">Similar Image</a>
+            </div>
+        </div>
+    </nav>
+</div>
+
+
+<section class="section">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <article class="message is-info">
+        <div class="message-header">
+            <p>Info</p>
+        </div>
+        <div class="message-body">
+            <ul>
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+
+        </div>
+    </article>
+    {% endif %}
+    {% endwith %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</section>
+</body>
+</html>

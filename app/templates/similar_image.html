@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Similar Image</h1>
+{% if not missing_index %}
+{% if model_up %}
+    {% if err %}
+    <div class="box has-background-danger-light">
+        <p>
+            <strong>{{ err }}</strong>
+        </p>
+    </div>
+    {% endif %}
+
+<section class="section">
+    <div class="box has-background-warning-light">
+        <p>
+            <b>Upload the image you want to search similar one to.</b>
+        </p>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+        <p>
+        <div class="field">
+            {{ form.hidden_tag() }}
+            {{ form.file(size=32, class_="input is-info") }}
+        </div>
+        </p>
+        <p>{{ form.submit(class_="button is-info") }}</p>
+    </form>
+</section>
+
+    {% if search_results %}
+    <section class="section">
+        <div class="container">
+            <img src="{{ original_file }}">
+            <hr>
+            <table class="table is-striped is-fullwidth">
+            <thead>
+            <tr>
+                <th><abbr title="Image ID">Image id</abbr></th>
+                <th><abbr title="Image name">Image name</abbr></th>
+                <th><abbr title="Score">Score</abbr></th>
+                <th><abbr title="Photo">Photo</abbr></th>>#}
+            </tr>
+            </thead>
+            {% for document in search_results %}
+
+            <tr>
+                <td>
+                    {{ document.fields.image_id[0] }}
+                </td>
+                <td>
+                    {{ document.fields.image_name[0] }}
+                </td>
+                <td>
+                    {{ document._score }}
+                </td>
+                <td>
+                    <img src="static/images/{{ document.fields.relative_path[0] }}"
+                         alt="{{ document.fields.image_name[0] }}" width="400">
+                    <button name="find_similar_item" value="{{ document.fields.image_id[0] }}" id="add-update"
+                            type="submit" class="button is-info">Find similar items</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        </div>
+    </section>
+    {% endif %}
+
+{% else %}
+<div class="box has-background-danger-light">
+    <p>
+        <strong> The NLP model ({{ model_name }}) required for this task is unavailable in Elasticsearch cluster. </br>Please make sure
+            the model is up and running.</strong>
+    </p>
+</div>
+
+{% endif %}
+
+{% else %}
+<div class="box has-background-danger-light">
+    <p>
+        <strong> The Index ({{ index_name }}) required for this task is unavailable in Elasticsearch cluster. </br>Please make sure
+            the index is available.</strong>
+    </p>
+</div>
+{% endif %}
+{% endblock %}

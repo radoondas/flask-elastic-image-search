@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">{{ title }}</h1>
+
+<div class="box has-background-danger-light">
+    <p>
+        <strong>{{ e_name }}</strong>
+        <br>
+        <i>{{ e_desc }} Max bytes allowed: {{ max_bytes }}</i>
+    </p>
+</div>
+{% endblock %}

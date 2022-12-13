@@ -92,7 +92,6 @@ If you see on the screen that some models are missing and you see a message `ML 
 
 ![](docs/img/model-sync.png)
 
-
 ### 3. Generate image embeddings
 Your next step is to generate the image embeddings from your photos. These embeddings will be used for kNN (vector) search in Elasticsearch.
 

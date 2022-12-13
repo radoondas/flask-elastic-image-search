@@ -1,0 +1,9 @@
+es-docker
+**/.DS_Store
+.git
+.idea
+.gitignore
+.venv
+*.gif
+*.png
+**/__pycache__
