@@ -25,7 +25,7 @@ at the same time, depending on how much memory you have available.
 To change the value of the memory in the docker-compose, go to `es-docker/.env` file and change `MEM_LIMIT`.
 
 ### Python environment
-**Python v3.9+**
+**Python v3.9**
 
 Make sure, you can access and use Python.
 
