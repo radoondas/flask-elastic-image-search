@@ -95,7 +95,7 @@ def main():
     with open("image-embeddings-mappings.json", "r") as config_file:
         config = json.loads(config_file.read())
         if args.delete_existing:
-            if not es.indices.exists(index=index):
+            if es.indices.exists(index=index):
                 print("Deleting existing %s" % index)
                 es.indices.delete(index=index, ignore=[400, 404])
 
