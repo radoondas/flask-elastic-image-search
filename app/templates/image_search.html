@@ -31,7 +31,7 @@
 <section>
     {% if image_id_to_search_for %}
         <br />
-        <div>Finding items similar to {{image_id_to_search_for}}
+        <div>Finding images similar to {{image_id_to_search_for}}
         </div>
     {% endif %}
 
@@ -62,8 +62,8 @@
                 <td>
                     <img src="static/images/{{ document.fields.relative_path[0] }}"
                          alt="{{ document.fields.image_name[0] }}" width="400">
-                    <button name="find_similar_item" value="{{ document.fields.image_id[0] }}" id="add-update"
-                            type="submit" class="button is-info">Find similar items</button>
+                    <button name="find_similar_image" value="{{ document.fields.image_id[0] }}" id="add-update"
+                            type="submit" class="button is-info">Find similar images</button>
                 </td>
             </tr>
             {% endfor %}

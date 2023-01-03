@@ -44,8 +44,8 @@ def image_search():
         # Check for  method
         if request.method == 'POST':
 
-            if 'find_similar_item' in request.form and request.form['find_similar_item'] is not None:
-                image_id_to_search_for = request.form['find_similar_item']
+            if 'find_similar_image' in request.form and request.form['find_similar_image'] is not None:
+                image_id_to_search_for = request.form['find_similar_image']
                 form.searchbox.data = None
 
                 image_info = es.search(
