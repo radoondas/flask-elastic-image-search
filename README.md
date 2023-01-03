@@ -1,4 +1,4 @@
-# flask-elastic-nlp
+# Elastic similarity image search
 ![](docs/img/similar_image.gif)
 
 ## Important initial thoughts
