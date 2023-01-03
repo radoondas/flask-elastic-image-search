@@ -10,6 +10,7 @@ from elasticsearch.helpers import parallel_bulk
 from PIL import Image
 import exifread
 from lat_lon_parser import parse
+from tqdm import tqdm
 
 ES_HOST = "https://127.0.0.1:9200/"
 ES_USER = "elastic"
@@ -23,7 +24,7 @@ CHUNK_SIZE = 100
 PATH_TO_IMAGES = "../app/static/images/**/*.jp*g"
 PREFIX = "../app/static/images/"
 
-CA_CERT='ca.crt'
+CA_CERT='../app/conf/ess-cloud.cer'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--es_host', dest='es_host', required=False, default=ES_HOST,
@@ -45,7 +46,7 @@ parser.add_argument('--delete_existing', dest='delete_existing', required=False,
                     action=argparse.BooleanOptionalAction,
                     help="Delete existing indices if they are present in the cluster. Default: True")
 parser.add_argument('--ca_certs', dest='ca_certs', required=False, default=CA_CERT,
-                    help="CA certificates. Default: ca.crt")
+                    help="CA certificates. Default: ../app/conf/ess-cloud.cer")
 parser.add_argument('--extract_GPS_location', dest='gps_location', required=False, default=False,
                     action=argparse.BooleanOptionalAction,
                     help="[Experimental] Extract GPS location from photos if available. Default: False")
@@ -62,9 +63,9 @@ def main():
     duration = time.perf_counter() - start_time
     print(f'Duration load model = {duration}')
 
+    filenames = glob.glob(PATH_TO_IMAGES, recursive=True)
     start_time = time.perf_counter()
-    for filename in glob.glob(PATH_TO_IMAGES, recursive=True):
-        print("Image: ", filename)
+    for filename in tqdm(filenames, desc='Processing files', total=len(filenames)):
         image = Image.open(filename)
 
         doc = {}

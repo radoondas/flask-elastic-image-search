@@ -4,6 +4,7 @@ flask-wtf==1.0.1
 elasticsearch~=8.5.2
 Pillow~=9.3.0
 sentence-transformers~=2.2.2
+tqdm~=4.64.1
 
 # Eland for import NLP models
 eland>=8,<9
