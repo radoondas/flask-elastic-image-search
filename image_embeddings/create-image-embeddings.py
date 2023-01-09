@@ -10,6 +10,11 @@ from elasticsearch.helpers import parallel_bulk
 from PIL import Image
 import exifread
 from lat_lon_parser import parse
+from datetime import datetime
+
+
+from exif import Image as exifImage
+
 
 ES_HOST = "https://127.0.0.1:9200/"
 ES_USER = "elastic"
@@ -44,14 +49,13 @@ parser.add_argument('--timeout', dest='timeout', required=False, default=ES_TIME
 parser.add_argument('--delete_existing', dest='delete_existing', required=False, default=True,
                     action=argparse.BooleanOptionalAction,
                     help="Delete existing indices if they are present in the cluster. Default: True")
-parser.add_argument('--ca_certs', dest='ca_certs', required=False, default=CA_CERT,
+parser.add_argument('--ca_certs', dest='ca_certs', required=False, default=False,
                     help="CA certificates. Default: ca.crt")
 parser.add_argument('--extract_GPS_location', dest='gps_location', required=False, default=False,
                     action=argparse.BooleanOptionalAction,
                     help="[Experimental] Extract GPS location from photos if available. Default: False")
 
 args = parser.parse_args()
-
 
 def main():
     global args
@@ -62,7 +66,12 @@ def main():
     duration = time.perf_counter() - start_time
     print(f'Duration load model = {duration}')
 
+    counter = 0 
+    total = 0
+
     start_time = time.perf_counter()
+    for filename in glob.glob(PATH_TO_IMAGES, recursive=True):
+      total = total + 1
     for filename in glob.glob(PATH_TO_IMAGES, recursive=True):
         print("Image: ", filename)
         image = Image.open(filename)
@@ -75,14 +84,23 @@ def main():
         doc['relative_path'] = os.path.relpath(filename).split(PREFIX)[1]
         # Experimental! Extract photo GPS location if available.
         if args.gps_location:
-            doc['exif'] = get_image_exif_location(filename)
+            doc['exif'] = get_image_exif(filename)
 
         lst.append(doc)
+        counter = counter + 1
+        print(str(counter) + ' / ' + str(total))
+        print("Progress: {0:.0%}".format(counter / total))
 
     duration = time.perf_counter() - start_time
     print(f'Duration creating image embeddings = {duration}')
-
+    
     es = Elasticsearch(
+        hosts=[args.es_host],
+        verify_certs=args.verify_certs,
+        basic_auth=(args.es_user, args.es_password),
+    )
+    if(args.ca_certs != False):
+      es = Elasticsearch(
         hosts=[args.es_host],
         verify_certs=args.verify_certs,
         basic_auth=(args.es_user, args.es_password),
@@ -138,51 +156,44 @@ def create_image_id(filename):
     return os.path.splitext(os.path.basename(filename))[0]
 
 # Experimental functionality
-def get_image_exif_location(filename):
-    # Only GPS now. Will need more work.
+def get_date_taken(path):
+  date_string = Image.open(path)._getexif()[36867]
+  date_object = datetime.strptime(date_string, "%Y:%m:%d %H:%M:%S")
+  return date_object.isoformat()
+
+
+def get_image_exif(filename):
     with open(filename, 'rb') as f:
-        exif_data = exifread.process_file(f)
-        # print("Date:", exif_data['EXIF DateTimeOriginal'])
-        # print("Camera model:", exif_data['Image Model'])
+        print("here")
+        image = exifImage(f)
+        exif = {} 
+        if image.has_exif:
+          try:
+            taken = f"{image.datetime_original}"
+            date_object = datetime.strptime(taken, "%Y:%m:%d %H:%M:%S")
+            exif['date'] = date_object.isoformat()
+            print(exif['date'])
+          except:
+            print("unable to get date")
+          try:
+            lat = dms_coordinates_to_dd_coordinates(image.gps_latitude, image.gps_latitude_ref)
+            lon = dms_coordinates_to_dd_coordinates(image.gps_longitude, image.gps_longitude_ref)
+            exif['location'] = [lon, lat]
+            print(exif['location'])
+          except:
+            print("unable to get location")
+        return exif
 
-        lat = 0
-        lon = 0
-        if exif_data.get('GPS GPSLatitude') is not None and exif_data.get('GPS GPSLatitudeRef') is not None:
-            # Yes, the following is crazy but working PoC (needs better handling)
-            if len(str(exif_data.get('GPS GPSLatitude').values[2]).split('/')) == 1:
-                lat = parse(str(exif_data.get('GPS GPSLatitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLatitude').values[1]) + " " +
-                            str(exif_data.get('GPS GPSLatitude').values[2]).split('/') + " " +
-                            str(exif_data['GPS GPSLatitudeRef']))
-            else:
-                lat = parse(str(exif_data.get('GPS GPSLatitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLatitude').values[1]) + " " +
-                            str(int(str(exif_data.get('GPS GPSLatitude').values[2]).split('/')[0]) / int(
-                                str(exif_data.get('GPS GPSLatitude').values[2]).split('/')[1])) + " " +
-                            str(exif_data['GPS GPSLatitudeRef']))
 
-        if exif_data.get('GPS GPSLongitude') is not None and exif_data.get('GPS GPSLongitudeRef') is not None:
-            # Yes, the following is crazy but working PoC (needs better handling)
-            if len(str(exif_data.get('GPS GPSLongitude').values[2]).split('/')) == 1:
-                lon = parse(str(exif_data.get('GPS GPSLongitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLongitude').values[1]) + " " +
-                            str(exif_data.get('GPS GPSLongitude').values[2]).split('/')[0] + " " +
-                            str(exif_data['GPS GPSLongitudeRef']))
-            else:
-                lon = parse(str(exif_data.get('GPS GPSLongitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLongitude').values[1]) + " " +
-                            str(int(str(exif_data.get('GPS GPSLongitude').values[2]).split('/')[0]) / int(
-                                str(exif_data.get('GPS GPSLongitude').values[2]).split('/')[1])) + " " +
-                            str(exif_data['GPS GPSLongitudeRef']))
-
-        if lat != 0 and lon != 0:
-            exif = {
-                "location": [lon, lat]
-            }
-            return exif
-        else:
-            return {}
-
+def dms_coordinates_to_dd_coordinates(coordinates, coordinates_ref):
+    decimal_degrees = coordinates[0] + \
+                      coordinates[1] / 60 + \
+                      coordinates[2] / 3600
+    
+    if coordinates_ref == "S" or coordinates_ref == "W":
+        decimal_degrees = -decimal_degrees
+    
+    return decimal_degrees
 
 if __name__ == '__main__':
     main()
