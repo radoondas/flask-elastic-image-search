@@ -100,7 +100,8 @@ def main():
     es = Elasticsearch(
         hosts=[args.es_host],
         verify_certs=args.verify_certs,
-        basic_auth=(args.es_user, args.es_password)
+        basic_auth=(args.es_user, args.es_password),
+        ca_certs=args.ca_certs
     )
     es.options(request_timeout=args.timeout)
 
