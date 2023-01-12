@@ -11,6 +11,8 @@ from PIL import Image
 import exifread
 from lat_lon_parser import parse
 from tqdm import tqdm
+from datetime import datetime
+from exif import Image as exifImage
 
 ES_HOST = "https://127.0.0.1:9200/"
 ES_USER = "elastic"
@@ -74,9 +76,21 @@ def main():
         doc['image_name'] = os.path.basename(filename)
         doc['image_embedding'] = embedding.tolist()
         doc['relative_path'] = os.path.relpath(filename).split(PREFIX)[1]
+        doc['exif'] = {}
+
+        try:
+            date = get_exif_date(filename)
+            print(date)
+            doc['exif']['date'] = get_exif_date(filename)
+        except Exception as e:
+            pass
+
         # Experimental! Extract photo GPS location if available.
         if args.gps_location:
-            doc['exif'] = get_image_exif_location(filename)
+            try:
+                doc['exif']['location'] = get_exif_location(filename)
+            except Exception as e:
+                pass
 
         lst.append(doc)
 
@@ -86,8 +100,7 @@ def main():
     es = Elasticsearch(
         hosts=[args.es_host],
         verify_certs=args.verify_certs,
-        basic_auth=(args.es_user, args.es_password),
-        ca_certs=args.ca_certs
+        basic_auth=(args.es_user, args.es_password)
     )
     es.options(request_timeout=args.timeout)
 
@@ -138,52 +151,32 @@ def create_image_id(filename):
     # print("Image filename: ", filename)
     return os.path.splitext(os.path.basename(filename))[0]
 
-# Experimental functionality
-def get_image_exif_location(filename):
-    # Only GPS now. Will need more work.
+def get_exif_date(filename):
     with open(filename, 'rb') as f:
-        exif_data = exifread.process_file(f)
-        # print("Date:", exif_data['EXIF DateTimeOriginal'])
-        # print("Camera model:", exif_data['Image Model'])
+        image = exifImage(f)
+        taken = f"{image.datetime_original}"
+        date_object = datetime.strptime(taken, "%Y:%m:%d %H:%M:%S")
+        prettyDate = date_object.isoformat()
+        return prettyDate
 
-        lat = 0
-        lon = 0
-        if exif_data.get('GPS GPSLatitude') is not None and exif_data.get('GPS GPSLatitudeRef') is not None:
-            # Yes, the following is crazy but working PoC (needs better handling)
-            if len(str(exif_data.get('GPS GPSLatitude').values[2]).split('/')) == 1:
-                lat = parse(str(exif_data.get('GPS GPSLatitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLatitude').values[1]) + " " +
-                            str(exif_data.get('GPS GPSLatitude').values[2]).split('/') + " " +
-                            str(exif_data['GPS GPSLatitudeRef']))
-            else:
-                lat = parse(str(exif_data.get('GPS GPSLatitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLatitude').values[1]) + " " +
-                            str(int(str(exif_data.get('GPS GPSLatitude').values[2]).split('/')[0]) / int(
-                                str(exif_data.get('GPS GPSLatitude').values[2]).split('/')[1])) + " " +
-                            str(exif_data['GPS GPSLatitudeRef']))
+def get_exif_location(filename):
+    with open(filename, 'rb') as f:
+        image = exifImage(f)
+        exif = {} 
+        lat = dms_coordinates_to_dd_coordinates(image.gps_latitude, image.gps_latitude_ref)
+        lon = dms_coordinates_to_dd_coordinates(image.gps_longitude, image.gps_longitude_ref)
+        return [lon, lat]
 
-        if exif_data.get('GPS GPSLongitude') is not None and exif_data.get('GPS GPSLongitudeRef') is not None:
-            # Yes, the following is crazy but working PoC (needs better handling)
-            if len(str(exif_data.get('GPS GPSLongitude').values[2]).split('/')) == 1:
-                lon = parse(str(exif_data.get('GPS GPSLongitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLongitude').values[1]) + " " +
-                            str(exif_data.get('GPS GPSLongitude').values[2]).split('/')[0] + " " +
-                            str(exif_data['GPS GPSLongitudeRef']))
-            else:
-                lon = parse(str(exif_data.get('GPS GPSLongitude').values[0]) + " " +
-                            str(exif_data.get('GPS GPSLongitude').values[1]) + " " +
-                            str(int(str(exif_data.get('GPS GPSLongitude').values[2]).split('/')[0]) / int(
-                                str(exif_data.get('GPS GPSLongitude').values[2]).split('/')[1])) + " " +
-                            str(exif_data['GPS GPSLongitudeRef']))
 
-        if lat != 0 and lon != 0:
-            exif = {
-                "location": [lon, lat]
-            }
-            return exif
-        else:
-            return {}
-
+def dms_coordinates_to_dd_coordinates(coordinates, coordinates_ref):
+    decimal_degrees = coordinates[0] + \
+                      coordinates[1] / 60 + \
+                      coordinates[2] / 3600
+    
+    if coordinates_ref == "S" or coordinates_ref == "W":
+        decimal_degrees = -decimal_degrees
+    
+    return decimal_degrees
 
 if __name__ == '__main__':
     main()
