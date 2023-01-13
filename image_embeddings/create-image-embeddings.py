@@ -8,8 +8,6 @@ from sentence_transformers import SentenceTransformer
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import parallel_bulk
 from PIL import Image
-import exifread
-from lat_lon_parser import parse
 from tqdm import tqdm
 from datetime import datetime
 from exif import Image as exifImage
@@ -80,7 +78,7 @@ def main():
 
         try:
             date = get_exif_date(filename)
-            print(date)
+            # print(date)
             doc['exif']['date'] = get_exif_date(filename)
         except Exception as e:
             pass

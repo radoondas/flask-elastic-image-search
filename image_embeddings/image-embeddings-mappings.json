@@ -24,6 +24,9 @@
         "properties" : {
           "location": {
             "type": "geo_point"
+          },
+          "date": {
+            "type": "date"
           }
         }
       }
