@@ -11,7 +11,7 @@ eland>=8,<9
 torch~=1.11.0
 
 # required by '.env' and '.flaskenv' files
-python-dotenv~=0.21.0
+python-dotenv~=0.21.1
 
 # for reading the exif jpg data
 exif==1.5.0

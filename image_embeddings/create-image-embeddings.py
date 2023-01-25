@@ -5,7 +5,7 @@ import time
 import json
 import argparse
 from sentence_transformers import SentenceTransformer
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, SSLError
 from elasticsearch.helpers import parallel_bulk
 from PIL import Image
 from tqdm import tqdm
@@ -45,8 +45,8 @@ parser.add_argument('--timeout', dest='timeout', required=False, default=ES_TIME
 parser.add_argument('--delete_existing', dest='delete_existing', required=False, default=True,
                     action=argparse.BooleanOptionalAction,
                     help="Delete existing indices if they are present in the cluster. Default: True")
-parser.add_argument('--ca_certs', dest='ca_certs', required=False, default=CA_CERT,
-                    help="CA certificates. Default: ../app/conf/ess-cloud.cer")
+parser.add_argument('--ca_certs', dest='ca_certs', required=False,# default=CA_CERT,
+                    help="Path to CA certificate.") # Default: ../app/conf/ess-cloud.cer")
 parser.add_argument('--extract_GPS_location', dest='gps_location', required=False, default=False,
                     action=argparse.BooleanOptionalAction,
                     help="[Experimental] Extract GPS location from photos if available. Default: False")
@@ -95,51 +95,68 @@ def main():
     duration = time.perf_counter() - start_time
     print(f'Duration creating image embeddings = {duration}')
 
-    es = Elasticsearch(
-        hosts=[args.es_host],
-        verify_certs=args.verify_certs,
-        basic_auth=(args.es_user, args.es_password),
-        ca_certs=args.ca_certs
-    )
+    es = Elasticsearch(hosts=ES_HOST)
+    if args.ca_certs:
+        es = Elasticsearch(
+            hosts=[args.es_host],
+            verify_certs=args.verify_certs,
+            basic_auth=(args.es_user, args.es_password),
+            ca_certs=args.ca_certs
+        )
+    else:
+        es = Elasticsearch(
+            hosts=[args.es_host],
+            verify_certs=args.verify_certs,
+            basic_auth=(args.es_user, args.es_password)
+        )
+
     es.options(request_timeout=args.timeout)
 
     # index name to index data into
     index = DEST_INDEX
-    with open("image-embeddings-mappings.json", "r") as config_file:
-        config = json.loads(config_file.read())
-        if args.delete_existing:
-            if es.indices.exists(index=index):
-                print("Deleting existing %s" % index)
-                es.indices.delete(index=index, ignore=[400, 404])
+    try:
+        with open("image-embeddings-mappings.json", "r") as config_file:
+            config = json.loads(config_file.read())
+            if args.delete_existing:
+                if es.indices.exists(index=index):
+                    print("Deleting existing %s" % index)
+                    es.indices.delete(index=index, ignore=[400, 404])
 
-        print("Creating index %s" % index)
-        es.indices.create(index=index,
-                          mappings=config["mappings"],
-                          settings=config["settings"],
-                          ignore=[400, 404],
-                          request_timeout=args.timeout)
+            print("Creating index %s" % index)
+            es.indices.create(index=index,
+                              mappings=config["mappings"],
+                              settings=config["settings"],
+                              ignore=[400, 404],
+                              request_timeout=args.timeout)
 
-    count = 0
-    for success, info in parallel_bulk(
-            client=es,
-            actions=lst,
-            thread_count=4,
-            chunk_size=args.chunk_size,
-            timeout='%ss' % 120,
-            index=index
-    ):
-        if success:
-            count += 1
-            if count % args.chunk_size == 0:
-                print('Indexed %s documents' % str(count), flush=True)
-                sys.stdout.flush()
+
+        count = 0
+        for success, info in parallel_bulk(
+                client=es,
+                actions=lst,
+                thread_count=4,
+                chunk_size=args.chunk_size,
+                timeout='%ss' % 120,
+                index=index
+        ):
+            if success:
+                count += 1
+                if count % args.chunk_size == 0:
+                    print('Indexed %s documents' % str(count), flush=True)
+                    sys.stdout.flush()
+            else:
+                print('Doc failed', info)
+
+        print('Indexed %s documents' % str(count), flush=True)
+        duration = time.perf_counter() - start_time
+        print(f'Total duration = {duration}')
+        print("Done!\n")
+    except SSLError as e:
+        if "SSL: CERTIFICATE_VERIFY_FAILED" in e.message:
+            print("\nCERTIFICATE_VERIFY_FAILED exception. Please check the CA path configuration for the script.\n")
+            raise
         else:
-            print('Doc failed', info)
-
-    print('Indexed %s documents' % str(count), flush=True)
-    duration = time.perf_counter() - start_time
-    print(f'Total duration = {duration}')
-    print("Done!\n")
+            raise
 
 
 def image_embedding(image, model):
