@@ -9,7 +9,8 @@ Werkzeug==2.2.2
 
 # Eland for import NLP models
 eland>=8,<9
-torch~=1.11.0
+torch~=1.13.0
+huggingface-hub==0.25.2
 
 # required by '.env' and '.flaskenv' files
 python-dotenv~=0.21.1
